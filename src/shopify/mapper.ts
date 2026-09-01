@@ -56,14 +56,21 @@ function basicValue(value: ShopifyDiscountCustomerGetsValue): PromoLabDiscountVa
 
 function itemEligibility(items: ShopifyDiscountItems): Pick<
   PromoLabDiscountEligibility,
-  'allProducts' | 'productIds' | 'variantIds' | 'skus'
+  'allProducts' | 'collectionIds' | 'productIds' | 'variantIds' | 'skus'
 > {
   if (items.__typename === 'AllDiscountItems') {
-    return { allProducts: items.allItems, productIds: [], variantIds: [], skus: [] };
+    return {
+      allProducts: items.allItems,
+      collectionIds: [],
+      productIds: [],
+      variantIds: [],
+      skus: [],
+    };
   }
   if (items.__typename === 'DiscountProducts') {
     return {
       allProducts: false,
+      collectionIds: [],
       productIds: [
         ...items.products.nodes.map((product) => product.id),
         ...items.productVariants.nodes.flatMap((variant) => variant.product?.id ?? []),
@@ -72,7 +79,13 @@ function itemEligibility(items: ShopifyDiscountItems): Pick<
       skus: items.productVariants.nodes.flatMap((variant) => variant.sku || []),
     };
   }
-  return { allProducts: false, productIds: [], variantIds: [], skus: [] };
+  return {
+    allProducts: false,
+    collectionIds: items.collections.nodes.map((collection) => collection.id),
+    productIds: [],
+    variantIds: [],
+    skus: [],
+  };
 }
 
 function requirementEligibility(requirement: ShopifyMinimumRequirement) {
@@ -89,6 +102,7 @@ function normalizeDiscount(id: string, discount: ShopifyDiscount): PromoLabDisco
   let value: PromoLabDiscountValue = { kind: 'unknown' };
   let eligibility: PromoLabDiscountEligibility = {
     allProducts: true,
+    collectionIds: [],
     productIds: [],
     variantIds: [],
     skus: [],
@@ -121,6 +135,8 @@ function normalizeDiscount(id: string, discount: ShopifyDiscount): PromoLabDisco
         Number(discount.customerBuys.value.quantity)
         + Number(discount.customerGets.value.quantity.quantity),
     };
+  } else {
+    eligibility = { ...eligibility, allProducts: false };
   }
 
   const normalized: PromoLabDiscount = {
@@ -129,7 +145,9 @@ function normalizeDiscount(id: string, discount: ShopifyDiscount): PromoLabDisco
     sourceType: discount.__typename,
     code: codeFor(discount),
     title: discount.title,
-    summary: discount.summary,
+    summary: 'summary' in discount
+      ? discount.summary
+      : discount.appDiscountType.description ?? discount.appDiscountType.title,
     status: statusFor(discount.status),
     category: categoryFor(discount),
     method: methodFor(discount),

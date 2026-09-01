@@ -1,6 +1,6 @@
 export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
-  query PromoLabDiscountNodes($first: Int!, $after: String) {
-    discountNodes(first: $first, after: $after, query: "status:active") {
+  query PromoLabDiscountNodes($first: Int!, $after: String, $query: String) {
+    discountNodes(first: $first, after: $after, query: $query) {
       nodes {
         id
         discount {
@@ -11,6 +11,8 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
           ...DiscountAutomaticFreeShippingFields
           ...DiscountCodeBxgyFields
           ...DiscountAutomaticBxgyFields
+          ...DiscountCodeAppFields
+          ...DiscountAutomaticAppFields
         }
       }
       pageInfo {
@@ -44,6 +46,9 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
       productVariants(first: 100) {
         nodes { id sku product { id } }
       }
+    }
+    ... on DiscountCollections {
+      collections(first: 100) { nodes { id } }
     }
   }
 
@@ -121,5 +126,18 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
       }
       items { ...DiscountItemFields }
     }
+  }
+
+  fragment DiscountCodeAppFields on DiscountCodeApp {
+    title status startsAt endsAt discountClasses
+    codes(first: 1) { nodes { code } }
+    combinesWith { ...DiscountCombinationFields }
+    appDiscountType { title description }
+  }
+
+  fragment DiscountAutomaticAppFields on DiscountAutomaticApp {
+    title status startsAt endsAt discountClasses
+    combinesWith { ...DiscountCombinationFields }
+    appDiscountType { title description }
   }
 `;

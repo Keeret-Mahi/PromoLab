@@ -44,7 +44,10 @@ export type ShopifyDiscountItems =
       products: { nodes: ShopifyProductReference[] };
       productVariants: { nodes: ShopifyVariantReference[] };
     }
-  | { __typename: 'DiscountCollections' };
+  | {
+      __typename: 'DiscountCollections';
+      collections: { nodes: Array<{ id: string }> };
+    };
 
 export type ShopifyDiscountCustomerGetsValue =
   | { __typename: 'DiscountPercentage'; percentage: number }
@@ -118,13 +121,31 @@ export interface ShopifyDiscountAutomaticBxgy extends ShopifyDiscountBase {
   customerGets: ShopifyBxgyCustomerGets;
 }
 
+export interface ShopifyAppDiscountType {
+  title: string;
+  description: string | null;
+}
+
+export interface ShopifyDiscountCodeApp extends Omit<ShopifyDiscountBase, 'summary'> {
+  __typename: 'DiscountCodeApp';
+  codes: { nodes: Array<{ code: string }> };
+  appDiscountType: ShopifyAppDiscountType;
+}
+
+export interface ShopifyDiscountAutomaticApp extends Omit<ShopifyDiscountBase, 'summary'> {
+  __typename: 'DiscountAutomaticApp';
+  appDiscountType: ShopifyAppDiscountType;
+}
+
 export type ShopifyDiscount =
   | ShopifyDiscountCodeBasic
   | ShopifyDiscountAutomaticBasic
   | ShopifyDiscountCodeFreeShipping
   | ShopifyDiscountAutomaticFreeShipping
   | ShopifyDiscountCodeBxgy
-  | ShopifyDiscountAutomaticBxgy;
+  | ShopifyDiscountAutomaticBxgy
+  | ShopifyDiscountCodeApp
+  | ShopifyDiscountAutomaticApp;
 
 export interface ShopifyDiscountNodesResponse {
   discountNodes: {
@@ -160,9 +181,27 @@ export interface ShopifyProductsResponse {
 export interface ShopifyGraphQLError {
   message: string;
   path?: Array<string | number>;
+  extensions?: {
+    code?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface ShopifyGraphQLCostExtensions {
+  requestedQueryCost?: number;
+  actualQueryCost?: number;
+  throttleStatus?: {
+    maximumAvailable: number;
+    currentlyAvailable: number;
+    restoreRate: number;
+  };
 }
 
 export interface ShopifyGraphQLResponse<T> {
   data?: T;
   errors?: ShopifyGraphQLError[];
+  extensions?: {
+    cost?: ShopifyGraphQLCostExtensions;
+    [key: string]: unknown;
+  };
 }

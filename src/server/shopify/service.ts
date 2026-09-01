@@ -1,6 +1,7 @@
 import type { PromoLabDiscount } from '../../shopify/model.ts';
 import type {
   ShopifyDiscountNodesResponse,
+  ShopifyProduct,
   ShopifyProductsResponse,
 } from '../../shopify/types.ts';
 
@@ -13,6 +14,7 @@ export interface ShopifyAdminToken {
 export interface ShopifyDiscountQueryOptions {
   first?: number;
   after?: string;
+  query?: string;
 }
 
 export interface ShopifyProductQueryOptions {
@@ -27,5 +29,6 @@ export interface ShopifyService {
   getAdminAccessToken(): Promise<ShopifyAdminToken>;
   queryDiscounts(options?: ShopifyDiscountQueryOptions): Promise<ShopifyDiscountNodesResponse>;
   queryProducts(options?: ShopifyProductQueryOptions): Promise<ShopifyProductsResponse>;
+  getProductsForEligibility(options?: Pick<ShopifyProductQueryOptions, 'query'>): Promise<ShopifyProduct[]>;
   getActiveDiscounts(): Promise<PromoLabDiscount[]>;
 }

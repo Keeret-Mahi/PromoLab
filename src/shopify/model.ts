@@ -21,6 +21,7 @@ export interface PromoLabDiscountEligibility {
   allProducts: boolean;
   minimumSubtotal?: number;
   minimumQuantity?: number;
+  collectionIds: string[];
   productIds: string[];
   variantIds: string[];
   skus: string[];
@@ -67,6 +68,14 @@ export function assertPromoLabDiscount(value: unknown): asserts value is PromoLa
   }
   if (!discount.value || !discount.eligibility || !discount.combinesWith) {
     throw new TypeError('A normalized discount requires value, eligibility, and combination policy.');
+  }
+  if (
+    !Array.isArray(discount.eligibility.collectionIds)
+    || !Array.isArray(discount.eligibility.productIds)
+    || !Array.isArray(discount.eligibility.variantIds)
+    || !Array.isArray(discount.eligibility.skus)
+  ) {
+    throw new TypeError('Normalized discount eligibility lists must be arrays.');
   }
   if (
     discount.value.kind === 'percentage'

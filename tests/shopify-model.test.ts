@@ -18,4 +18,11 @@ test('rejects incomplete and invalid normalized discounts', () => {
     () => assertPromoLabDiscount({ ...valid, value: { kind: 'percentage', percentage: 0 } }),
     /positive percentage/i,
   );
+  assert.throws(
+    () => assertPromoLabDiscount({
+      ...valid,
+      eligibility: { ...valid.eligibility, collectionIds: undefined },
+    }),
+    /eligibility lists must be arrays/i,
+  );
 });

@@ -35,3 +35,42 @@ test('normalizes percentage, threshold, and BOGO eligibility fields', () => {
   assert.deepEqual(bogo?.eligibility.skus, ['TEE-CLASSIC']);
   assert.equal(bogo?.eligibility.minimumQuantity, 3);
 });
+
+test('preserves collection eligibility and safely normalizes Shopify Functions discounts', () => {
+  const response = structuredClone(MOCK_SHOPIFY_DISCOUNTS_RESPONSE);
+  const basic = response.discountNodes.nodes[0]?.discount;
+  assert.equal(basic?.__typename, 'DiscountCodeBasic');
+  if (basic?.__typename !== 'DiscountCodeBasic') return;
+  basic.customerGets.items = {
+    __typename: 'DiscountCollections',
+    collections: { nodes: [{ id: 'gid://shopify/Collection/sale' }] },
+  };
+
+  response.discountNodes.nodes.push({
+    id: 'gid://shopify/DiscountCodeNode/app-managed',
+    discount: {
+      __typename: 'DiscountCodeApp',
+      title: 'Loyalty function',
+      status: 'ACTIVE',
+      startsAt: '2026-01-01T00:00:00Z',
+      endsAt: null,
+      discountClasses: ['PRODUCT'],
+      codes: { nodes: [{ code: 'LOYALTY' }] },
+      combinesWith: {
+        orderDiscounts: true,
+        productDiscounts: false,
+        shippingDiscounts: true,
+      },
+      appDiscountType: {
+        title: 'Loyalty discount',
+        description: 'Custom loyalty pricing supplied by a Shopify Function.',
+      },
+    },
+  });
+
+  const discounts = mapShopifyDiscounts(response);
+  assert.deepEqual(discounts[0]?.eligibility.collectionIds, ['gid://shopify/Collection/sale']);
+  assert.deepEqual(discounts.at(-1)?.value, { kind: 'unknown' });
+  assert.equal(discounts.at(-1)?.summary, 'Custom loyalty pricing supplied by a Shopify Function.');
+  assert.equal(discounts.at(-1)?.eligibility.allProducts, false);
+});
