@@ -1,13 +1,8 @@
-import { MockIntentParser } from '../adapters/intent-parser.ts';
-import { MockShopifyAdminAdapter } from '../adapters/shopify-admin.ts';
-import {
-  executeMockScenario,
-  MockShopifyExecutionAdapter,
-} from '../adapters/shopify-execution.ts';
-import { DEFAULT_EXPECTATIONS, SAMPLE_DISCOUNTS } from '../data/fixtures.ts';
 import type {
+  Discount,
   DiscountExecutor,
   DiscountReader,
+  ExpectedPromotion,
   IntentParser,
   PreflightReport,
 } from '../domain/types.ts';
@@ -20,15 +15,9 @@ export interface PreflightDependencies {
   executor: DiscountExecutor;
 }
 
-export const defaultDependencies: PreflightDependencies = {
-  intentParser: new MockIntentParser(),
-  discountReader: new MockShopifyAdminAdapter(),
-  executor: new MockShopifyExecutionAdapter(),
-};
-
 export async function runPreflight(
   intent: string,
-  dependencies: PreflightDependencies = defaultDependencies,
+  dependencies: PreflightDependencies,
 ): Promise<PreflightReport> {
   const [expectations, discounts] = await Promise.all([
     dependencies.intentParser.parse(intent),
@@ -39,6 +28,19 @@ export async function runPreflight(
     scenarios.map((scenario) => dependencies.executor.execute(scenario, discounts)),
   );
 
+  return buildPreflightReport(expectations, discounts, scenarios, executions);
+}
+
+export function buildPreflightReport(
+  expectations: ExpectedPromotion,
+  discounts: Discount[],
+  scenarios = generateScenarios(discounts),
+  executions: Awaited<ReturnType<DiscountExecutor['execute']>>[] = [],
+): PreflightReport {
+  if (executions.length !== scenarios.length) {
+    throw new Error('Each generated scenario requires one execution result.');
+  }
+
   return {
     expectations,
     discounts,
@@ -47,24 +49,5 @@ export async function runPreflight(
       validateScenario(scenario, executions[index], expectations),
     ),
     generatedAt: new Date().toISOString(),
-  };
-}
-
-export function buildDemoReport(): PreflightReport {
-  const scenarios = generateScenarios(SAMPLE_DISCOUNTS);
-  const results = scenarios.map((scenario) =>
-    validateScenario(
-      scenario,
-      executeMockScenario(scenario, SAMPLE_DISCOUNTS),
-      DEFAULT_EXPECTATIONS,
-    ),
-  );
-
-  return {
-    expectations: DEFAULT_EXPECTATIONS,
-    discounts: SAMPLE_DISCOUNTS,
-    scenarios,
-    results,
-    generatedAt: '2026-09-01T12:00:00.000Z',
   };
 }

@@ -1,26 +1,14 @@
-export type DiscountCode = 'WELCOME10' | 'SUMMER20' | 'FREESHIP' | 'BUY2GET1';
+import type {
+  PromoLabCombinationPolicy,
+  PromoLabDiscount,
+  PromoLabDiscountCategory,
+} from '../shopify/model.ts';
 
-export type DiscountCategory = 'order' | 'shipping' | 'product';
-
-export interface DiscountCombinationPolicy {
-  orderDiscounts: boolean;
-  productDiscounts: boolean;
-  shippingDiscounts: boolean;
-}
-
-export interface Discount {
-  code: DiscountCode;
-  title: string;
-  category: DiscountCategory;
-  method: 'code' | 'automatic';
-  valueLabel: string;
-  percentage?: number;
-  minimumSubtotal?: number;
-  eligibleSku?: string;
-  requiredQuantity?: number;
-  freeQuantity?: number;
-  combinesWith: DiscountCombinationPolicy;
-}
+export type KnownDiscountCode = 'WELCOME10' | 'SUMMER20' | 'FREESHIP' | 'BUY2GET1';
+export type DiscountCode = string;
+export type Discount = PromoLabDiscount;
+export type DiscountCategory = PromoLabDiscountCategory;
+export type DiscountCombinationPolicy = PromoLabCombinationPolicy;
 
 export interface CartLine {
   sku: string;

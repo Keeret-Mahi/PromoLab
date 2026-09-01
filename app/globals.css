@@ -34,7 +34,7 @@ nav { display: grid; gap: 4px; }
 .nav-icon { width: 21px; color: #707a74; font-family: var(--font-geist-mono); text-align: center; }
 .nav-count { margin-left: auto; color: #6d756f; font-size: 12px; }
 .principle-card { margin: auto 6px 14px; padding: 14px; border: 1px solid #d8e1db; border-radius: 10px; background: rgb(255 255 255 / 66%); }
-.principle-card .principle-icon { width: 28px; height: 24px; margin-bottom: 10px; display: grid; place-items: center; border-radius: 6px; color: #5e4896; background: #eee9fa; font-size: 9px; font-weight: 780; }
+.principle-card .principle-icon { width: 28px; height: 24px; margin-bottom: 10px; display: grid; place-items: center; border-radius: 6px; color: #176b4c; background: #e4f2ea; font-size: 11px; font-weight: 780; }
 .principle-card strong { display: block; font-size: 11px; }
 .principle-card p { margin: 5px 0 0; color: #77807a; font-size: 10px; line-height: 1.45; }
 .sidebar-note { margin-top: auto; padding: 14px 10px 2px; border-top: 1px solid #dce1dc; font-size: 12px; font-weight: 600; color: #49524d; }
@@ -63,6 +63,7 @@ nav { display: grid; gap: 4px; }
 .prompt-card textarea:focus { box-shadow: inset 0 0 0 2px #87bea8; }
 .prompt-footer { min-height: 66px; padding: 12px 14px 12px 20px; border-top: 1px solid #e7eae7; background: #fafbfa; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .prompt-footer > span { color: #7a827d; font-size: 12px; }
+.prompt-footer > span.prompt-error { color: #a64242; font-weight: 600; }
 .prompt-footer button { flex: none; border: 0; border-radius: 8px; padding: 11px 15px; color: white; background: var(--green); font-weight: 680; cursor: pointer; box-shadow: inset 0 -2px 0 rgb(0 0 0 / 14%); }
 .prompt-footer button:hover { background: var(--green-dark); }
 .prompt-footer button:disabled { cursor: not-allowed; opacity: .62; }
@@ -73,7 +74,7 @@ nav { display: grid; gap: 4px; }
 .pipeline { margin: 14px 0 42px; padding: 13px 16px; border: 1px solid #e0e4e1; border-radius: 11px; background: rgb(255 255 255 / 64%); display: grid; grid-template-columns: repeat(4, 1fr); }
 .pipeline-step { position: relative; min-width: 0; display: flex; align-items: center; gap: 9px; }
 .step-number { width: 29px; height: 29px; flex: none; display: grid; place-items: center; border-radius: 8px; color: #4a6e5d; background: #e8f2ed; font-family: var(--font-geist-mono); font-size: 9px; font-weight: 700; }
-.step-number.ai { color: #6a519d; background: #eeeafa; }
+.step-number.parser { color: #4f665b; background: #e9efec; }
 .step-number.shopify { color: #286148; background: #e4f1e9; }
 .pipeline-step strong, .pipeline-step small { display: block; }
 .pipeline-step strong { overflow: hidden; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
@@ -84,8 +85,7 @@ nav { display: grid; gap: 4px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 13px; }
 .section-heading h3 { margin: 0; font-size: 16px; }
 .section-heading > span { color: #858d88; font-size: 11px; }
-.ai-badge { padding: 6px 9px; border: 1px solid #ded7ee; border-radius: 7px; color: #695886 !important; background: #f5f2fb; }
-.ai-badge b { margin-right: 4px; font-size: 9px; }
+.parsed-badge { padding: 6px 9px; border: 1px solid #d9e1dc; border-radius: 7px; color: #607069 !important; background: #f4f7f5; }
 .expectations-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 12px; }
 .expectations-card, .coverage-card { border: 1px solid #dde2de; border-radius: 12px; background: #fff; box-shadow: 0 4px 18px rgb(22 42 32 / 3%); }
 .expectations-head { padding: 17px 18px; border-bottom: 1px solid #e7eae8; display: flex; justify-content: space-between; gap: 16px; }

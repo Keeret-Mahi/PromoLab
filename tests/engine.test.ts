@@ -1,7 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { MockIntentParser } from '../src/adapters/intent-parser.ts';
-import { buildDemoReport } from '../src/engine/run-preflight.ts';
+import { executeMockScenario } from '../src/adapters/shopify-execution.ts';
+import { DEFAULT_EXPECTATIONS } from '../src/data/fixtures.ts';
+import { buildPreflightReport } from '../src/engine/run-preflight.ts';
+import { generateScenarios } from '../src/engine/scenario-generator.ts';
+import { mapShopifyDiscounts } from '../src/shopify/mapper.ts';
+import { MOCK_SHOPIFY_DISCOUNTS_RESPONSE } from '../src/server/shopify/mock-data.ts';
+
+function buildDemoReport() {
+  const discounts = mapShopifyDiscounts(MOCK_SHOPIFY_DISCOUNTS_RESPONSE)
+    .map((discount) => ({ ...discount, source: 'mock' as const }));
+  const scenarios = generateScenarios(discounts);
+  const executions = scenarios.map((scenario) => executeMockScenario(scenario, discounts));
+  return buildPreflightReport(DEFAULT_EXPECTATIONS, discounts, scenarios, executions);
+}
 
 test('generates every single and pair across four representative carts', () => {
   const report = buildDemoReport();

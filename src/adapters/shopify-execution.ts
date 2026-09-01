@@ -16,6 +16,10 @@ function findDiscount(discounts: Discount[], code: DiscountCode): Discount {
   return discount;
 }
 
+function percentageFor(discount: Discount): number {
+  return discount.value.kind === 'percentage' ? discount.value.percentage : 0;
+}
+
 function reject(
   rejectedDiscounts: RejectedDiscount[],
   code: DiscountCode,
@@ -45,7 +49,7 @@ export function executeMockScenario(
   if (requestedOrderCodes.length === 2) {
     const welcome = findDiscount(discounts, 'WELCOME10');
     const summer = findDiscount(discounts, 'SUMMER20');
-    selectedOrderCode = (summer.percentage ?? 0) >= (welcome.percentage ?? 0)
+    selectedOrderCode = percentageFor(summer) >= percentageFor(welcome)
       ? 'SUMMER20'
       : 'WELCOME10';
     const excludedCode = selectedOrderCode === 'SUMMER20' ? 'WELCOME10' : 'SUMMER20';
@@ -60,8 +64,10 @@ export function executeMockScenario(
 
   if (requested.has('BUY2GET1')) {
     const bogo = findDiscount(discounts, 'BUY2GET1');
+    const eligibleSku = bogo.eligibility.skus[0];
+    const requiredQuantity = bogo.eligibility.minimumQuantity ?? 3;
     const eligibleLine = scenario.cart.lines.find(
-      (line) => line.sku === bogo.eligibleSku && line.quantity >= (bogo.requiredQuantity ?? 3),
+      (line) => line.sku === eligibleSku && line.quantity >= requiredQuantity,
     );
 
     if (!eligibleLine) {
@@ -73,26 +79,28 @@ export function executeMockScenario(
         `${selectedOrderCode} is configured not to combine with product discounts.`,
       );
     } else {
-      productDiscount = roundMoney(eligibleLine.unitPrice * (bogo.freeQuantity ?? 1));
+      const freeQuantity = bogo.value.kind === 'buy-x-get-y' ? bogo.value.getQuantity : 1;
+      productDiscount = roundMoney(eligibleLine.unitPrice * freeQuantity);
       appliedDiscounts.push('BUY2GET1');
     }
   }
 
   if (selectedOrderCode) {
     const discount = findDiscount(discounts, selectedOrderCode);
-    orderDiscount = roundMoney((subtotal - productDiscount) * ((discount.percentage ?? 0) / 100));
+    orderDiscount = roundMoney((subtotal - productDiscount) * (percentageFor(discount) / 100));
     appliedDiscounts.push(selectedOrderCode);
   }
 
   if (requested.has('FREESHIP')) {
     const freeShipping = findDiscount(discounts, 'FREESHIP');
     const postDiscountSubtotal = roundMoney(subtotal - productDiscount - orderDiscount);
+    const minimumSubtotal = freeShipping.eligibility.minimumSubtotal ?? 0;
 
-    if (postDiscountSubtotal < (freeShipping.minimumSubtotal ?? 0)) {
+    if (postDiscountSubtotal < minimumSubtotal) {
       reject(
         rejectedDiscounts,
         'FREESHIP',
-        `The configured threshold checks the post-discount subtotal ($${postDiscountSubtotal.toFixed(2)}), which is below $${freeShipping.minimumSubtotal}.`,
+        `The configured threshold checks the post-discount subtotal ($${postDiscountSubtotal.toFixed(2)}), which is below $${minimumSubtotal}.`,
       );
     } else {
       shippingDiscount = scenario.cart.shippingPrice;

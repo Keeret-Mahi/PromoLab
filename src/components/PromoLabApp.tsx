@@ -1,14 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { DEFAULT_PROMPT, getCartSubtotal, SAMPLE_CARTS } from '../data/fixtures.ts';
+import { DEFAULT_PROMPT, getCartSubtotal } from '../data/fixtures.ts';
 import type {
   DiscountCode,
   PreflightReport,
   ValidationResult,
   ValidationStatus,
 } from '../domain/types.ts';
-import { buildDemoReport, runPreflight } from '../engine/run-preflight.ts';
 
 type ResultFilter = 'all' | ValidationStatus;
 
@@ -109,11 +108,11 @@ function ResultRow({
   );
 }
 
-export default function PromoLabApp() {
-  const initialReport = useMemo(() => buildDemoReport(), []);
+export default function PromoLabApp({ initialReport }: { initialReport: PreflightReport }) {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [report, setReport] = useState<PreflightReport>(initialReport);
   const [runState, setRunState] = useState<'idle' | 'running'>('idle');
+  const [runError, setRunError] = useState('');
   const [filter, setFilter] = useState<ResultFilter>('all');
   const [expandedId, setExpandedId] = useState(
     initialReport.results.find((result) => result.status === 'fail')?.scenario.id ?? '',
@@ -137,18 +136,46 @@ export default function PromoLabApp() {
     [filter, report],
   );
 
+  const representativeCarts = useMemo(
+    () => Array.from(
+      new Map(report.scenarios.map((scenario) => [scenario.cart.id, scenario.cart])).values(),
+    ),
+    [report],
+  );
+
+  const combinationCount = useMemo(
+    () => new Set(report.scenarios.map((scenario) => scenario.discountCodes.join('+'))).size,
+    [report],
+  );
+
   async function handleRun() {
     if (!prompt.trim() || runState === 'running') return;
     setRunState('running');
-    const [nextReport] = await Promise.all([
-      runPreflight(prompt.trim()),
-      new Promise((resolve) => setTimeout(resolve, 700)),
-    ]);
-    setReport(nextReport);
-    setExpandedId(nextReport.results.find((result) => result.status === 'fail')?.scenario.id ?? '');
-    setFilter('all');
-    setRunState('idle');
-    document.querySelector('#results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setRunError('');
+
+    try {
+      const [response] = await Promise.all([
+        fetch('/api/preflight', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ intent: prompt.trim() }),
+        }),
+        new Promise((resolve) => setTimeout(resolve, 700)),
+      ]);
+      const payload = await response.json() as PreflightReport | { error: string };
+      if (!response.ok || 'error' in payload) {
+        throw new Error('error' in payload ? payload.error : 'Unable to run the preflight.');
+      }
+
+      setReport(payload);
+      setExpandedId(payload.results.find((result) => result.status === 'fail')?.scenario.id ?? '');
+      setFilter('all');
+      document.querySelector('#results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : 'Unable to run the preflight.');
+    } finally {
+      setRunState('idle');
+    }
   }
 
   return (
@@ -160,13 +187,13 @@ export default function PromoLabApp() {
         </div>
         <nav aria-label="Primary navigation">
           <a className="nav-item active" href="#workspace"><span className="nav-icon">⌁</span>Test workspace</a>
-          <a className="nav-item" href="#discounts"><span className="nav-icon">%</span>Discounts<span className="nav-count">4</span></a>
+          <a className="nav-item" href="#discounts"><span className="nav-icon">%</span>Discounts<span className="nav-count">{report.discounts.length}</span></a>
           <a className="nav-item" href="#results"><span className="nav-icon">↺</span>Test results<span className="nav-count">{report.results.length}</span></a>
         </nav>
         <div className="principle-card">
-          <span className="principle-icon">AI</span>
-          <strong>Interpret, then verify</strong>
-          <p>AI structures the intent. Code determines every result.</p>
+          <span className="principle-icon">✓</span>
+          <strong>Preflight checks</strong>
+          <p>Turn a promotion brief into rules and run it through test carts.</p>
         </div>
         <div className="sidebar-note">
           <span className="status-dot" /> Mock store connected
@@ -207,7 +234,9 @@ export default function PromoLabApp() {
               aria-describedby="prompt-help"
             />
             <div className="prompt-footer">
-              <span id="prompt-help">Include expected stacking, thresholds, and eligibility.</span>
+              <span id="prompt-help" className={runError ? 'prompt-error' : ''} aria-live="polite">
+                {runError || 'Include expected stacking, thresholds, and eligibility.'}
+              </span>
               <button type="button" onClick={handleRun} disabled={runState === 'running' || !prompt.trim()}>
                 {runState === 'running' ? <><i className="spinner" /> Running 40 scenarios</> : <>Run preflight <span>→</span></>}
               </button>
@@ -216,7 +245,7 @@ export default function PromoLabApp() {
 
           <section className="pipeline" aria-label="Preflight workflow">
             {[
-              ['01', 'Interpret intent', 'Mock LLM', 'ai'],
+              ['01', 'Parse the brief', 'Rule parser', 'parser'],
               ['02', 'Generate cases', 'Deterministic', 'code'],
               ['03', 'Execute carts', 'Mock Shopify', 'shopify'],
               ['04', 'Validate results', 'Deterministic', 'code'],
@@ -232,7 +261,7 @@ export default function PromoLabApp() {
           <section className="expectations-section">
             <div className="section-heading">
               <div><p className="eyebrow">Intent contract</p><h3>Structured expectations</h3></div>
-              <span className="ai-badge"><b>AI</b> Interpreted · {Math.round(report.expectations.confidence * 100)}% confidence</span>
+              <span className="parsed-badge">Parsed from your brief · {Math.round(report.expectations.confidence * 100)}% confidence</span>
             </div>
             <div className="expectations-layout">
               <div className="expectations-card">
@@ -249,15 +278,15 @@ export default function PromoLabApp() {
                     </article>
                   ))}
                 </div>
-                <div className="expectations-note"><span>i</span><p><strong>AI stops here.</strong> These structured rules are passed to the deterministic validator; the LLM never assigns pass or fail.</p></div>
+                <div className="expectations-note"><span>i</span><p><strong>Review this contract.</strong> PromoLab checks every scenario against these rules and calculates the result in code.</p></div>
               </div>
 
               <aside className="coverage-card">
                 <p className="eyebrow">Deterministic coverage</p>
                 <div className="coverage-number"><strong>{report.scenarios.length}</strong><span>scenarios generated</span></div>
-                <div className="coverage-math"><span><b>10</b> combinations</span><i>×</i><span><b>{SAMPLE_CARTS.length}</b> carts</span></div>
+                <div className="coverage-math"><span><b>{combinationCount}</b> combinations</span><i>×</i><span><b>{representativeCarts.length}</b> carts</span></div>
                 <div className="cart-fixtures">
-                  {SAMPLE_CARTS.map((cart) => (
+                  {representativeCarts.map((cart) => (
                     <div key={cart.id}><span>{cart.name}</span><strong>{money.format(getCartSubtotal(cart))}</strong></div>
                   ))}
                 </div>
@@ -267,7 +296,7 @@ export default function PromoLabApp() {
 
           <section className="discount-strip" id="discounts">
             <div className="section-heading">
-              <div><p className="eyebrow">Shopify Admin adapter</p><h3>4 active discounts</h3></div>
+              <div><p className="eyebrow">Shopify service</p><h3>{report.discounts.length} active discounts</h3></div>
               <span><i className="synced-dot" />Mock response · synced just now</span>
             </div>
             <div className="discount-grid">
@@ -300,7 +329,7 @@ export default function PromoLabApp() {
               <button className={`summary-card total ${filter === 'all' ? 'selected' : ''}`} type="button" onClick={() => setFilter('all')}>
                 <span className="coverage-ring">100%</span>
                 <div><strong>{report.results.length}</strong><span>Total tests</span></div>
-                <small>4 carts covered</small>
+                <small>{representativeCarts.length} carts covered</small>
               </button>
             </div>
 
@@ -339,7 +368,7 @@ export default function PromoLabApp() {
 
           <footer className="app-footer">
             <span><b>PromoLab</b> prototype</span>
-            <span>Mock adapters · no live Shopify data</span>
+            <span>Mock Shopify service · no live API requests</span>
           </footer>
         </div>
       </section>
