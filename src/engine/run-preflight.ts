@@ -5,6 +5,7 @@ import type {
   ExpectedPromotion,
   IntentParser,
   PreflightReport,
+  PreflightRuntime,
 } from '../domain/types.ts';
 import { generateScenarios } from './scenario-generator.ts';
 import { validateScenario } from './validator.ts';
@@ -13,7 +14,13 @@ export interface PreflightDependencies {
   intentParser: IntentParser;
   discountReader: DiscountReader;
   executor: DiscountExecutor;
+  runtime?: PreflightRuntime;
 }
+
+const DEFAULT_RUNTIME: PreflightRuntime = {
+  dataMode: 'mock',
+  executionMode: 'mock',
+};
 
 export async function runPreflight(
   intent: string,
@@ -28,7 +35,13 @@ export async function runPreflight(
     scenarios.map((scenario) => dependencies.executor.execute(scenario, discounts)),
   );
 
-  return buildPreflightReport(expectations, discounts, scenarios, executions);
+  return buildPreflightReport(
+    expectations,
+    discounts,
+    scenarios,
+    executions,
+    dependencies.runtime,
+  );
 }
 
 export function buildPreflightReport(
@@ -36,6 +49,7 @@ export function buildPreflightReport(
   discounts: Discount[],
   scenarios = generateScenarios(discounts),
   executions: Awaited<ReturnType<DiscountExecutor['execute']>>[] = [],
+  runtime: PreflightRuntime = DEFAULT_RUNTIME,
 ): PreflightReport {
   if (executions.length !== scenarios.length) {
     throw new Error('Each generated scenario requires one execution result.');
@@ -48,6 +62,7 @@ export function buildPreflightReport(
     results: scenarios.map((scenario, index) =>
       validateScenario(scenario, executions[index], expectations),
     ),
+    runtime,
     generatedAt: new Date().toISOString(),
   };
 }

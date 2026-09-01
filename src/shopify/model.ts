@@ -25,6 +25,21 @@ export interface PromoLabDiscountEligibility {
   productIds: string[];
   variantIds: string[];
   skus: string[];
+  mayBeTruncated: boolean;
+}
+
+export interface PromoLabProductVariant {
+  id: string;
+  title: string;
+  sku?: string;
+}
+
+/** The small product shape PromoLab needs for promotion eligibility tests. */
+export interface PromoLabProduct {
+  id: string;
+  title: string;
+  variants: PromoLabProductVariant[];
+  variantsMayBeTruncated: boolean;
 }
 
 /**
@@ -77,10 +92,32 @@ export function assertPromoLabDiscount(value: unknown): asserts value is PromoLa
   ) {
     throw new TypeError('Normalized discount eligibility lists must be arrays.');
   }
+  if (typeof discount.eligibility.mayBeTruncated !== 'boolean') {
+    throw new TypeError('Normalized discount eligibility requires a truncation flag.');
+  }
   if (
     discount.value.kind === 'percentage'
     && (!Number.isFinite(discount.value.percentage) || discount.value.percentage <= 0)
   ) {
     throw new TypeError('Percentage discounts require a positive percentage.');
+  }
+}
+
+export function assertPromoLabProduct(value: unknown): asserts value is PromoLabProduct {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('A normalized product must be an object.');
+  }
+
+  const product = value as Partial<PromoLabProduct>;
+  if (!product.id || !product.title || !Array.isArray(product.variants)) {
+    throw new TypeError('A normalized product requires id, title, and variants.');
+  }
+  if (typeof product.variantsMayBeTruncated !== 'boolean') {
+    throw new TypeError('A normalized product requires a variant truncation flag.');
+  }
+  for (const variant of product.variants) {
+    if (!variant.id || !variant.title) {
+      throw new TypeError('A normalized product variant requires id and title.');
+    }
   }
 }

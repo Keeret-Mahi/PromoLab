@@ -15,6 +15,10 @@ export const PRODUCTS_FOR_ELIGIBILITY_QUERY = /* GraphQL */ `
             price
             inventoryQuantity
           }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
         }
       }
       pageInfo {

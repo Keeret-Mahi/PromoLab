@@ -42,13 +42,20 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
     __typename
     ... on AllDiscountItems { allItems }
     ... on DiscountProducts {
-      products(first: 100) { nodes { id } }
+      products(first: 100) {
+        nodes { id }
+        pageInfo { hasNextPage endCursor }
+      }
       productVariants(first: 100) {
         nodes { id sku product { id } }
+        pageInfo { hasNextPage endCursor }
       }
     }
     ... on DiscountCollections {
-      collections(first: 100) { nodes { id } }
+      collections(first: 100) {
+        nodes { id }
+        pageInfo { hasNextPage endCursor }
+      }
     }
   }
 

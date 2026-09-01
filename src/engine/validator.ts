@@ -103,7 +103,7 @@ export function validateScenario(
       status: 'warning',
       expectedDiscounts,
       reason: 'Expected incompatibility confirmed.',
-      detail: 'Both order codes were tested. Shopify kept SUMMER20 and rejected WELCOME10, matching the best-discount rule.',
+      detail: 'Both order codes were tested. The execution kept SUMMER20 and rejected WELCOME10, matching the best-discount rule.',
     };
   }
 
@@ -113,7 +113,7 @@ export function validateScenario(
     execution,
     status: 'pass',
     expectedDiscounts,
-    reason: eligibilityNote ? 'Eligibility behaved as expected.' : 'Actual behaviour matches the expected rules.',
+    reason: eligibilityNote ? 'Eligibility behaved as expected.' : 'Execution matches the expected rules.',
     detail: eligibilityNote ?? 'The applied discounts and monetary allocations match the deterministic expectation.',
   };
 }

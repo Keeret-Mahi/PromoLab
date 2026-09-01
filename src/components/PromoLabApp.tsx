@@ -38,12 +38,15 @@ function ResultRow({
   result,
   expanded,
   onToggle,
+  executionMode,
 }: {
   result: ValidationResult;
   expanded: boolean;
   onToggle: () => void;
+  executionMode: PreflightReport['runtime']['executionMode'];
 }) {
   const { scenario, execution, status } = result;
+  const executionResultLabel = executionMode === 'live' ? 'Actual' : 'Simulated';
 
   return (
     <article className={`result-row ${expanded ? 'expanded' : ''}`}>
@@ -66,7 +69,7 @@ function ResultRow({
           {codeList(result.expectedDiscounts)}
         </span>
         <span className="result-codes actual-codes">
-          <small>Actual</small>
+          <small>{executionResultLabel}</small>
           {codeList(execution.appliedDiscounts, 'None applied')}
         </span>
         <span className="total-cell">
@@ -86,7 +89,7 @@ function ResultRow({
             <p>{result.detail}</p>
             {execution.rejectedDiscounts.length > 0 && (
               <div className="shopify-response">
-                <span>Mock Shopify response</span>
+                <span>{executionMode === 'live' ? 'Shopify execution response' : 'Simulated execution response'}</span>
                 {execution.rejectedDiscounts.map((rejection) => (
                   <p key={rejection.code}>
                     <code>{rejection.code}</code> {rejection.reason}
@@ -100,7 +103,7 @@ function ResultRow({
             <div><span>Product discount</span><strong>−{money.format(execution.productDiscount)}</strong></div>
             <div><span>Order discount</span><strong>−{money.format(execution.orderDiscount)}</strong></div>
             <div><span>Shipping</span><strong>{money.format(execution.shippingPrice - execution.shippingDiscount)}</strong></div>
-            <div className="calculation-total"><span>Actual total</span><strong>{money.format(execution.total)}</strong></div>
+            <div className="calculation-total"><span>{executionResultLabel} total</span><strong>{money.format(execution.total)}</strong></div>
           </div>
         </div>
       )}
@@ -147,6 +150,14 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
     () => new Set(report.scenarios.map((scenario) => scenario.discountCodes.join('+'))).size,
     [report],
   );
+
+  const dataLabel = report.runtime.dataMode === 'live'
+    ? 'Live Shopify data'
+    : 'Mock Shopify data';
+  const executionLabel = report.runtime.executionMode === 'live'
+    ? 'Live Shopify execution'
+    : 'Simulated execution';
+  const connectionLabel = `${dataLabel} · ${executionLabel}`;
 
   async function handleRun() {
     if (!prompt.trim() || runState === 'running') return;
@@ -196,8 +207,8 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
           <p>Turn a promotion brief into rules and run it through test carts.</p>
         </div>
         <div className="sidebar-note">
-          <span className="status-dot" /> Mock store connected
-          <small>promolab-demo.myshopify.com</small>
+          <span className="status-dot" /> {dataLabel}
+          <small>{executionLabel}</small>
         </div>
       </aside>
 
@@ -208,8 +219,8 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
             <h1>Test a promotion</h1>
           </div>
           <div className="topbar-actions">
-            <span className="mock-badge"><i />Mock Shopify mode</span>
-            <div className="store-avatar" aria-label="Demo store account">DS</div>
+            <span className="mock-badge"><i />{connectionLabel}</span>
+            <div className="store-avatar" aria-label="Store account">DS</div>
           </div>
         </header>
 
@@ -247,7 +258,7 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
             {[
               ['01', 'Parse the brief', 'Rule parser', 'parser'],
               ['02', 'Generate cases', 'Deterministic', 'code'],
-              ['03', 'Execute carts', 'Mock Shopify', 'shopify'],
+              ['03', 'Execute carts', executionLabel, 'shopify'],
               ['04', 'Validate results', 'Deterministic', 'code'],
             ].map(([step, title, label, kind], index) => (
               <div className="pipeline-step" key={step}>
@@ -297,7 +308,7 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
           <section className="discount-strip" id="discounts">
             <div className="section-heading">
               <div><p className="eyebrow">Shopify service</p><h3>{report.discounts.length} active discounts</h3></div>
-              <span><i className="synced-dot" />Mock response · synced just now</span>
+              <span><i className="synced-dot" />{dataLabel} · synced just now</span>
             </div>
             <div className="discount-grid">
               {report.discounts.map((discount) => (
@@ -305,7 +316,15 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
                   <span className={`discount-icon ${discount.category}`}>
                     {discount.category === 'shipping' ? '↗' : discount.category === 'product' ? '1+' : '%'}
                   </span>
-                  <div><strong>{discount.code}</strong><p>{discount.title}</p></div>
+                  <div>
+                    <strong>{discount.code}</strong>
+                    <p>{discount.title}</p>
+                    {discount.eligibility.mayBeTruncated && (
+                      <small className="truncation-note">
+                        Eligibility may be incomplete beyond Shopify&apos;s 100-item query limit.
+                      </small>
+                    )}
+                  </div>
                   <span className="type-pill">{discount.method}</span>
                 </article>
               ))}
@@ -314,7 +333,7 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
 
           <section className="results-section" id="results">
             <div className="results-heading">
-              <div><p className="eyebrow">Preflight report</p><h3>Interaction results</h3><p>Every result is produced by the deterministic validator.</p></div>
+              <div><p className="eyebrow">Preflight report</p><h3>Interaction results</h3><p>{executionLabel}; every comparison is produced by the deterministic validator.</p></div>
               <div className="run-stamp"><span className="status-dot" /><strong>Run complete</strong><small>{report.scenarios.length} of {report.scenarios.length} executed</small></div>
             </div>
 
@@ -352,7 +371,7 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
                 </div>
                 <span>Sorted by attention needed</span>
               </div>
-              <div className="table-head"><span>Outcome & scenario</span><span>Expected</span><span>Actual</span><span>Total</span></div>
+              <div className="table-head"><span>Outcome & scenario</span><span>Expected</span><span>{report.runtime.executionMode === 'live' ? 'Actual' : 'Simulated'}</span><span>Total</span></div>
               <div className="result-list">
                 {filteredResults.map((result) => (
                   <ResultRow
@@ -360,6 +379,7 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
                     result={result}
                     expanded={expandedId === result.scenario.id}
                     onToggle={() => setExpandedId(expandedId === result.scenario.id ? '' : result.scenario.id)}
+                    executionMode={report.runtime.executionMode}
                   />
                 ))}
               </div>
@@ -368,7 +388,7 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
 
           <footer className="app-footer">
             <span><b>PromoLab</b> prototype</span>
-            <span>Mock Shopify service · no live API requests</span>
+            <span>{connectionLabel}{report.runtime.executionMode === 'mock' ? ' · no Storefront API requests' : ''}</span>
           </footer>
         </div>
       </section>

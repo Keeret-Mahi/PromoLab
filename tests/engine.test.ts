@@ -79,3 +79,16 @@ test('mock intent parser extracts edited percentages and thresholds', async () =
   assert.equal(parsed.rules.find((rule) => rule.id === 'summer-value')?.value, 25);
   assert.equal(parsed.rules.find((rule) => rule.id === 'shipping-threshold')?.threshold, 120);
 });
+
+test('simulated execution rejects unsupported live discount codes instead of fabricating a result', () => {
+  const discounts = mapShopifyDiscounts(MOCK_SHOPIFY_DISCOUNTS_RESPONSE);
+  const scenario = {
+    ...generateScenarios(discounts)[0],
+    discountCodes: ['REALSTORECODE'],
+  };
+
+  assert.throws(
+    () => executeMockScenario(scenario, discounts),
+    /Simulated execution does not support: REALSTORECODE.*No Shopify execution result was produced/i,
+  );
+});

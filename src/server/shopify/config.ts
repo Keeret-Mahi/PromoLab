@@ -1,5 +1,10 @@
 import 'server-only';
 
+import type {
+  ShopifyDataMode,
+  ShopifyExecutionMode,
+} from '../../domain/types.ts';
+
 export interface LiveShopifyConfig {
   mode: 'live';
   shop: string;
@@ -16,15 +21,35 @@ export type ShopifyConfig = MockShopifyConfig | LiveShopifyConfig;
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
   const value = env[name]?.trim();
-  if (!value) throw new Error(`${name} is required when SHOPIFY_MODE=live.`);
+  if (!value) throw new Error(`${name} is required when SHOPIFY_DATA_MODE=live.`);
   return value;
 }
 
-export function readShopifyConfig(env: NodeJS.ProcessEnv = process.env): ShopifyConfig {
-  const mode = env.SHOPIFY_MODE?.trim().toLowerCase() || 'mock';
+function readMode<T extends 'mock' | 'live'>(
+  env: NodeJS.ProcessEnv,
+  name: string,
+): T {
+  const mode = env[name]?.trim().toLowerCase() || 'mock';
   if (mode !== 'mock' && mode !== 'live') {
-    throw new Error('SHOPIFY_MODE must be either mock or live.');
+    throw new Error(`${name} must be either mock or live.`);
   }
+  return mode as T;
+}
+
+export function readShopifyDataMode(
+  env: NodeJS.ProcessEnv = process.env,
+): ShopifyDataMode {
+  return readMode<ShopifyDataMode>(env, 'SHOPIFY_DATA_MODE');
+}
+
+export function readShopifyExecutionMode(
+  env: NodeJS.ProcessEnv = process.env,
+): ShopifyExecutionMode {
+  return readMode<ShopifyExecutionMode>(env, 'SHOPIFY_EXECUTION_MODE');
+}
+
+export function readShopifyConfig(env: NodeJS.ProcessEnv = process.env): ShopifyConfig {
+  const mode = readShopifyDataMode(env);
   if (mode === 'mock') return { mode };
 
   return {

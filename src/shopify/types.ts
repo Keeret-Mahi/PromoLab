@@ -37,16 +37,21 @@ export interface ShopifyVariantReference {
   product?: { id: string } | null;
 }
 
+export interface ShopifyNestedConnection<T> {
+  nodes: T[];
+  pageInfo: ShopifyPageInfo;
+}
+
 export type ShopifyDiscountItems =
   | { __typename: 'AllDiscountItems'; allItems: boolean }
   | {
       __typename: 'DiscountProducts';
-      products: { nodes: ShopifyProductReference[] };
-      productVariants: { nodes: ShopifyVariantReference[] };
+      products: ShopifyNestedConnection<ShopifyProductReference>;
+      productVariants: ShopifyNestedConnection<ShopifyVariantReference>;
     }
   | {
       __typename: 'DiscountCollections';
-      collections: { nodes: Array<{ id: string }> };
+      collections: ShopifyNestedConnection<{ id: string }>;
     };
 
 export type ShopifyDiscountCustomerGetsValue =
@@ -168,7 +173,7 @@ export interface ShopifyProduct {
   handle: string;
   status: 'ACTIVE' | 'ARCHIVED' | 'DRAFT' | 'UNLISTED';
   tags: string[];
-  variants: { nodes: ShopifyProductVariant[] };
+  variants: ShopifyNestedConnection<ShopifyProductVariant>;
 }
 
 export interface ShopifyProductsResponse {

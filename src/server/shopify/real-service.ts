@@ -1,11 +1,16 @@
 import 'server-only';
 
-import { mapShopifyDiscounts } from '../../shopify/mapper.ts';
-import type { PromoLabDiscount } from '../../shopify/model.ts';
+import {
+  mapShopifyDiscounts,
+  mapShopifyProducts,
+} from '../../shopify/mapper.ts';
+import type {
+  PromoLabDiscount,
+  PromoLabProduct,
+} from '../../shopify/model.ts';
 import type {
   ShopifyDiscountNodesResponse,
   ShopifyGraphQLResponse,
-  ShopifyProduct,
   ShopifyProductsResponse,
 } from '../../shopify/types.ts';
 import type { LiveShopifyConfig } from './config.ts';
@@ -324,8 +329,8 @@ export class RealShopifyService implements ShopifyService {
 
   async getProductsForEligibility(
     options: Pick<ShopifyProductQueryOptions, 'query'> = {},
-  ): Promise<ShopifyProduct[]> {
-    const products: ShopifyProduct[] = [];
+  ): Promise<PromoLabProduct[]> {
+    const products: ShopifyProductsResponse['products']['nodes'] = [];
     const seenCursors = new Set<string>();
     let after: string | undefined;
 
@@ -338,7 +343,14 @@ export class RealShopifyService implements ShopifyService {
       products.push(...page.products.nodes);
 
       const { hasNextPage, endCursor } = page.products.pageInfo;
-      if (!hasNextPage) return products;
+      if (!hasNextPage) {
+        return mapShopifyProducts({
+          products: {
+            nodes: products,
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        });
+      }
       if (!endCursor || seenCursors.has(endCursor)) {
         throw new Error('Shopify products pagination returned an invalid cursor.');
       }

@@ -95,13 +95,17 @@ export const MOCK_SHOPIFY_DISCOUNTS_RESPONSE: ShopifyDiscountNodesResponse = {
             value: { quantity: '2' },
             items: {
               __typename: 'DiscountProducts',
-              products: { nodes: [{ id: 'gid://shopify/Product/mock-classic-tee' }] },
+              products: {
+                nodes: [{ id: 'gid://shopify/Product/mock-classic-tee' }],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
               productVariants: {
                 nodes: [{
                   id: 'gid://shopify/ProductVariant/mock-classic-tee',
                   sku: 'TEE-CLASSIC',
                   product: { id: 'gid://shopify/Product/mock-classic-tee' },
                 }],
+                pageInfo: { hasNextPage: false, endCursor: null },
               },
             },
           },
@@ -136,6 +140,7 @@ export const MOCK_SHOPIFY_PRODUCTS_RESPONSE: ShopifyProductsResponse = {
             price: '30.00',
             inventoryQuantity: 100,
           }],
+          pageInfo: { hasNextPage: false, endCursor: null },
         },
       },
     ],

@@ -30,7 +30,9 @@ function requestUrl(input: RequestInfo | URL): string {
 }
 
 test('mock mode is credential-free and does not construct the live service', () => {
-  const service = createShopifyService({ SHOPIFY_MODE: 'mock' } as unknown as NodeJS.ProcessEnv);
+  const service = createShopifyService(
+    { SHOPIFY_DATA_MODE: 'mock' } as unknown as NodeJS.ProcessEnv,
+  );
   assert.equal(service.mode, 'mock');
 });
 
@@ -137,7 +139,10 @@ test('paginates all active discounts and eligibility products', async () => {
           handle: 'one',
           status: 'ACTIVE' as const,
           tags: [],
-          variants: { nodes: [] },
+          variants: {
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
         }],
         pageInfo: { hasNextPage: true, endCursor: 'product-page-2' },
       },
@@ -150,7 +155,10 @@ test('paginates all active discounts and eligibility products', async () => {
           handle: 'two',
           status: 'DRAFT' as const,
           tags: [],
-          variants: { nodes: [] },
+          variants: {
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
         }],
         pageInfo: { hasNextPage: false, endCursor: null },
       },

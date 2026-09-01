@@ -78,6 +78,14 @@ export interface ExecutionResult {
 
 export type ValidationStatus = 'pass' | 'fail' | 'warning';
 
+export type ShopifyDataMode = 'mock' | 'live';
+export type ShopifyExecutionMode = 'mock' | 'live';
+
+export interface PreflightRuntime {
+  dataMode: ShopifyDataMode;
+  executionMode: ShopifyExecutionMode;
+}
+
 export interface ValidationResult {
   scenario: Scenario;
   execution: ExecutionResult;
@@ -92,6 +100,7 @@ export interface PreflightReport {
   discounts: Discount[];
   scenarios: Scenario[];
   results: ValidationResult[];
+  runtime: PreflightRuntime;
   generatedAt: string;
 }
 

@@ -1,10 +1,15 @@
 import 'server-only';
 
-import { mapShopifyDiscounts } from '../../shopify/mapper.ts';
-import type { PromoLabDiscount } from '../../shopify/model.ts';
+import {
+  mapShopifyDiscounts,
+  mapShopifyProducts,
+} from '../../shopify/mapper.ts';
+import type {
+  PromoLabDiscount,
+  PromoLabProduct,
+} from '../../shopify/model.ts';
 import type {
   ShopifyDiscountNodesResponse,
-  ShopifyProduct,
   ShopifyProductsResponse,
 } from '../../shopify/types.ts';
 import {
@@ -31,8 +36,8 @@ export class MockShopifyService implements ShopifyService {
     return structuredClone(MOCK_SHOPIFY_PRODUCTS_RESPONSE);
   }
 
-  async getProductsForEligibility(): Promise<ShopifyProduct[]> {
-    return structuredClone(MOCK_SHOPIFY_PRODUCTS_RESPONSE.products.nodes);
+  async getProductsForEligibility(): Promise<PromoLabProduct[]> {
+    return mapShopifyProducts(await this.queryProducts());
   }
 
   async getActiveDiscounts(): Promise<PromoLabDiscount[]> {

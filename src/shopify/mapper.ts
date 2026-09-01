@@ -1,11 +1,13 @@
 import {
   assertPromoLabDiscount,
+  assertPromoLabProduct,
   type PromoLabDiscount,
   type PromoLabDiscountCategory,
   type PromoLabDiscountEligibility,
   type PromoLabDiscountMethod,
   type PromoLabDiscountStatus,
   type PromoLabDiscountValue,
+  type PromoLabProduct,
 } from './model.ts';
 import type {
   ShopifyDiscount,
@@ -13,6 +15,7 @@ import type {
   ShopifyDiscountItems,
   ShopifyDiscountNodesResponse,
   ShopifyMinimumRequirement,
+  ShopifyProductsResponse,
 } from './types.ts';
 
 function methodFor(discount: ShopifyDiscount): PromoLabDiscountMethod {
@@ -56,7 +59,7 @@ function basicValue(value: ShopifyDiscountCustomerGetsValue): PromoLabDiscountVa
 
 function itemEligibility(items: ShopifyDiscountItems): Pick<
   PromoLabDiscountEligibility,
-  'allProducts' | 'collectionIds' | 'productIds' | 'variantIds' | 'skus'
+  'allProducts' | 'collectionIds' | 'productIds' | 'variantIds' | 'skus' | 'mayBeTruncated'
 > {
   if (items.__typename === 'AllDiscountItems') {
     return {
@@ -65,6 +68,7 @@ function itemEligibility(items: ShopifyDiscountItems): Pick<
       productIds: [],
       variantIds: [],
       skus: [],
+      mayBeTruncated: false,
     };
   }
   if (items.__typename === 'DiscountProducts') {
@@ -77,6 +81,9 @@ function itemEligibility(items: ShopifyDiscountItems): Pick<
       ].filter((id, index, ids) => ids.indexOf(id) === index),
       variantIds: items.productVariants.nodes.map((variant) => variant.id),
       skus: items.productVariants.nodes.flatMap((variant) => variant.sku || []),
+      mayBeTruncated:
+        items.products.pageInfo.hasNextPage
+        || items.productVariants.pageInfo.hasNextPage,
     };
   }
   return {
@@ -85,6 +92,7 @@ function itemEligibility(items: ShopifyDiscountItems): Pick<
     productIds: [],
     variantIds: [],
     skus: [],
+    mayBeTruncated: items.collections.pageInfo.hasNextPage,
   };
 }
 
@@ -106,6 +114,7 @@ function normalizeDiscount(id: string, discount: ShopifyDiscount): PromoLabDisco
     productIds: [],
     variantIds: [],
     skus: [],
+    mayBeTruncated: false,
   };
 
   if (discount.__typename === 'DiscountCodeBasic' || discount.__typename === 'DiscountAutomaticBasic') {
@@ -122,6 +131,8 @@ function normalizeDiscount(id: string, discount: ShopifyDiscount): PromoLabDisco
     value = { kind: 'free-shipping' };
     eligibility = { ...eligibility, ...requirementEligibility(discount.minimumRequirement) };
   } else if (discount.__typename === 'DiscountCodeBxgy' || discount.__typename === 'DiscountAutomaticBxgy') {
+    const customerBuysEligibility = itemEligibility(discount.customerBuys.items);
+    const customerGetsEligibility = itemEligibility(discount.customerGets.items);
     value = {
       kind: 'buy-x-get-y',
       buyQuantity: Number(discount.customerBuys.value.quantity),
@@ -130,10 +141,13 @@ function normalizeDiscount(id: string, discount: ShopifyDiscount): PromoLabDisco
     };
     eligibility = {
       ...eligibility,
-      ...itemEligibility(discount.customerBuys.items),
+      ...customerBuysEligibility,
       minimumQuantity:
         Number(discount.customerBuys.value.quantity)
         + Number(discount.customerGets.value.quantity.quantity),
+      mayBeTruncated:
+        customerBuysEligibility.mayBeTruncated
+        || customerGetsEligibility.mayBeTruncated,
     };
   } else {
     eligibility = { ...eligibility, allProducts: false };
@@ -166,4 +180,23 @@ export function mapShopifyDiscounts(
   response: ShopifyDiscountNodesResponse,
 ): PromoLabDiscount[] {
   return response.discountNodes.nodes.map(({ id, discount }) => normalizeDiscount(id, discount));
+}
+
+export function mapShopifyProducts(
+  response: ShopifyProductsResponse,
+): PromoLabProduct[] {
+  return response.products.nodes.map((product) => {
+    const normalized: PromoLabProduct = {
+      id: product.id,
+      title: product.title,
+      variants: product.variants.nodes.map((variant) => ({
+        id: variant.id,
+        title: variant.title,
+        ...(variant.sku ? { sku: variant.sku } : {}),
+      })),
+      variantsMayBeTruncated: product.variants.pageInfo.hasNextPage,
+    };
+    assertPromoLabProduct(normalized);
+    return normalized;
+  });
 }

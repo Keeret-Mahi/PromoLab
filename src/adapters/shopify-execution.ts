@@ -9,6 +9,12 @@ import type {
 } from '../domain/types.ts';
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+const SUPPORTED_SIMULATION_CODES = new Set<DiscountCode>([
+  'WELCOME10',
+  'SUMMER20',
+  'FREESHIP',
+  'BUY2GET1',
+]);
 
 function findDiscount(discounts: Discount[], code: DiscountCode): Discount {
   const discount = discounts.find((candidate) => candidate.code === code);
@@ -32,6 +38,16 @@ export function executeMockScenario(
   scenario: Scenario,
   discounts: Discount[],
 ): ExecutionResult {
+  const unsupportedCodes = scenario.discountCodes.filter(
+    (code) => !SUPPORTED_SIMULATION_CODES.has(code),
+  );
+  if (unsupportedCodes.length) {
+    throw new Error(
+      `Simulated execution does not support: ${unsupportedCodes.join(', ')}. `
+      + 'No Shopify execution result was produced.',
+    );
+  }
+
   const requested = new Set(scenario.discountCodes);
   const subtotal = getCartSubtotal(scenario.cart);
   const appliedDiscounts: DiscountCode[] = [];
@@ -56,7 +72,7 @@ export function executeMockScenario(
     reject(
       rejectedDiscounts,
       excludedCode,
-      'Shopify allows only one order discount; the larger saving was selected.',
+      'The simulation allows one order discount and selected the larger saving.',
     );
   } else {
     selectedOrderCode = requestedOrderCodes[0];
