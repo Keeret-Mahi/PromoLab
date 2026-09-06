@@ -141,6 +141,9 @@ nav { display: grid; gap: 4px; }
 .run-stamp strong, .run-stamp small { display: block; }
 .run-stamp strong { font-size: 10px; }
 .run-stamp small { margin-top: 2px; color: #7e8581; font-size: 9px; }
+.results-empty { padding: 26px; border: 1px solid #dce1dd; border-radius: 12px; color: #4f5853; background: #fff; text-align: center; }
+.results-empty strong { font-size: 12px; }
+.results-empty p { margin: 6px 0 0; color: #7e8581; font-size: 10px; }
 .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .summary-card { min-width: 0; padding: 14px; border: 1px solid #dfe3e0; border-radius: 11px; background: #fff; display: grid; grid-template-columns: auto 1fr; gap: 10px; text-align: left; cursor: pointer; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
 .summary-card:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgb(30 45 36 / 5%); }

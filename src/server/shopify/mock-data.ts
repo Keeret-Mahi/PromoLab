@@ -92,7 +92,7 @@ export const MOCK_SHOPIFY_DISCOUNTS_RESPONSE: ShopifyDiscountNodesResponse = {
             shippingDiscounts: true,
           },
           customerBuys: {
-            value: { quantity: '2' },
+            value: { __typename: 'DiscountQuantity', quantity: '2' },
             items: {
               __typename: 'DiscountProducts',
               products: {
@@ -111,6 +111,7 @@ export const MOCK_SHOPIFY_DISCOUNTS_RESPONSE: ShopifyDiscountNodesResponse = {
           },
           customerGets: {
             value: {
+              __typename: 'DiscountOnQuantity',
               quantity: { quantity: '1' },
               effect: { __typename: 'DiscountPercentage', percentage: 1 },
             },

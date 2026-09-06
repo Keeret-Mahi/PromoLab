@@ -27,6 +27,7 @@ test('MockShopifyService supplies cloned mock data and normalized models without
       id: 'gid://shopify/ProductVariant/mock-classic-tee',
       title: 'Default',
       sku: 'TEE-CLASSIC',
+      price: 30,
     }],
     variantsMayBeTruncated: false,
   }]);

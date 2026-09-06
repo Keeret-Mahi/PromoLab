@@ -17,6 +17,18 @@ const money = new Intl.NumberFormat('en-CA', {
   minimumFractionDigits: 2,
 });
 
+function formatMoney(amount: number, currencyCode = 'CAD') {
+  try {
+    return new Intl.NumberFormat('en-CA', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return money.format(amount);
+  }
+}
+
 const statusCopy: Record<ValidationStatus, { label: string; symbol: string }> = {
   pass: { label: 'Passed', symbol: '✓' },
   fail: { label: 'Unexpected', symbol: '×' },
@@ -62,7 +74,7 @@ function ResultRow({
           <span className="scenario-title">
             {scenario.discountCodes.join(' + ')}
           </span>
-          <span>{scenario.cart.name} · {money.format(getCartSubtotal(scenario.cart))} subtotal</span>
+          <span>{scenario.cart.name} · {formatMoney(getCartSubtotal(scenario.cart), execution.currencyCode)} subtotal</span>
         </span>
         <span className="result-codes">
           <small>Expected</small>
@@ -74,7 +86,7 @@ function ResultRow({
         </span>
         <span className="total-cell">
           <small>Cart total</small>
-          <strong>{money.format(execution.total)}</strong>
+          <strong>{formatMoney(execution.total, execution.currencyCode)}</strong>
         </span>
         <span className="chevron" aria-hidden="true">⌄</span>
       </button>
@@ -99,11 +111,11 @@ function ResultRow({
             )}
           </div>
           <div className="calculation" aria-label="Cart calculation">
-            <div><span>Merchandise</span><strong>{money.format(execution.subtotal)}</strong></div>
-            <div><span>Product discount</span><strong>−{money.format(execution.productDiscount)}</strong></div>
-            <div><span>Order discount</span><strong>−{money.format(execution.orderDiscount)}</strong></div>
-            <div><span>Shipping</span><strong>{money.format(execution.shippingPrice - execution.shippingDiscount)}</strong></div>
-            <div className="calculation-total"><span>{executionResultLabel} total</span><strong>{money.format(execution.total)}</strong></div>
+            <div><span>Merchandise</span><strong>{formatMoney(execution.subtotal, execution.currencyCode)}</strong></div>
+            <div><span>Product discount</span><strong>−{formatMoney(execution.productDiscount, execution.currencyCode)}</strong></div>
+            <div><span>Order discount</span><strong>−{formatMoney(execution.orderDiscount, execution.currencyCode)}</strong></div>
+            <div><span>Shipping</span><strong>{formatMoney(execution.shippingPrice - execution.shippingDiscount, execution.currencyCode)}</strong></div>
+            <div className="calculation-total"><span>{executionResultLabel} total</span><strong>{formatMoney(execution.total, execution.currencyCode)}</strong></div>
           </div>
         </div>
       )}
@@ -158,6 +170,10 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
     ? 'Live Shopify execution'
     : 'Simulated execution';
   const connectionLabel = `${dataLabel} · ${executionLabel}`;
+  const hasResults = report.results.length > 0;
+  const verificationLabel = hasResults
+    ? `${report.results.length}${report.runtime.executionMode === 'live' ? ' live' : ''} scenarios verified`
+    : `${report.scenarios.length}${report.runtime.executionMode === 'live' ? ' live' : ''} scenarios ready`;
 
   async function handleRun() {
     if (!prompt.trim() || runState === 'running') return;
@@ -230,7 +246,7 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
               <h2>Know what your discounts will do before customers do.</h2>
               <p>Describe the intended behaviour. PromoLab turns it into explicit rules and runs deterministic cart tests against your active configuration.</p>
             </div>
-            <span className="safety-note"><b>✓</b> Deterministically verified</span>
+            <span className="safety-note"><b>✓</b> {verificationLabel}</span>
           </section>
 
           <section className="prompt-card">
@@ -246,17 +262,19 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
             />
             <div className="prompt-footer">
               <span id="prompt-help" className={runError ? 'prompt-error' : ''} aria-live="polite">
-                {runError || 'Include expected stacking, thresholds, and eligibility.'}
+                {runError || 'Describe the expected discount value and stacking behavior.'}
               </span>
               <button type="button" onClick={handleRun} disabled={runState === 'running' || !prompt.trim()}>
-                {runState === 'running' ? <><i className="spinner" /> Running 40 scenarios</> : <>Run preflight <span>→</span></>}
+                {runState === 'running'
+                  ? <><i className="spinner" /> Running preflight</>
+                  : <>{report.runtime.executionMode === 'live' ? 'Run live preflight' : 'Run preflight'} <span>→</span></>}
               </button>
             </div>
           </section>
 
           <section className="pipeline" aria-label="Preflight workflow">
             {[
-              ['01', 'Parse the brief', 'Rule parser', 'parser'],
+              ['01', 'Parse the brief', 'Structured rule parser', 'parser'],
               ['02', 'Generate cases', 'Deterministic', 'code'],
               ['03', 'Execute carts', executionLabel, 'shopify'],
               ['04', 'Validate results', 'Deterministic', 'code'],
@@ -272,7 +290,7 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
           <section className="expectations-section">
             <div className="section-heading">
               <div><p className="eyebrow">Intent contract</p><h3>Structured expectations</h3></div>
-              <span className="parsed-badge">Parsed from your brief · {Math.round(report.expectations.confidence * 100)}% confidence</span>
+              <span className="parsed-badge">Structured by the rule parser</span>
             </div>
             <div className="expectations-layout">
               <div className="expectations-card">
@@ -285,7 +303,9 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
                     <article className="rule-row" key={rule.id}>
                       <span className="rule-index">{String(index + 1).padStart(2, '0')}</span>
                       <div><strong>{rule.title}</strong><p>{rule.statement}</p></div>
-                      <span className={`rule-kind ${rule.kind}`}>{rule.kind.replace('-', ' ')}</span>
+                      <span className={`rule-kind ${rule.kind}`}>
+                        {rule.kind.split('-').map((word) => word[0]?.toUpperCase() + word.slice(1)).join(' ')}
+                      </span>
                     </article>
                   ))}
                 </div>
@@ -333,57 +353,79 @@ export default function PromoLabApp({ initialReport }: { initialReport: Prefligh
 
           <section className="results-section" id="results">
             <div className="results-heading">
-              <div><p className="eyebrow">Preflight report</p><h3>Interaction results</h3><p>{executionLabel}; every comparison is produced by the deterministic validator.</p></div>
-              <div className="run-stamp"><span className="status-dot" /><strong>Run complete</strong><small>{report.scenarios.length} of {report.scenarios.length} executed</small></div>
+              <div>
+                <p className="eyebrow">Preflight report</p>
+                <h3>Interaction results</h3>
+                <p>
+                  {executionLabel}; every comparison is produced by the deterministic validator.
+                  {report.runtime.executionMode === 'live' && ' Current prototype verifies a focused set of representative live scenarios.'}
+                </p>
+              </div>
+              <div className="run-stamp">
+                <span className="status-dot" />
+                <strong>{hasResults ? 'Run complete' : 'Ready to run'}</strong>
+                <small>{hasResults
+                  ? `${report.results.length} of ${report.scenarios.length} executed`
+                  : `${report.scenarios.length} scenarios queued`}</small>
+              </div>
             </div>
 
-            <div className="summary-grid">
-              {(['pass', 'fail', 'warning'] as ValidationStatus[]).map((status) => (
-                <button className={`summary-card ${status} ${filter === status ? 'selected' : ''}`} type="button" key={status} onClick={() => setFilter(status)}>
-                  <span className={`status-icon ${status}`}>{statusCopy[status].symbol}</span>
-                  <div><strong>{counts[status]}</strong><span>{statusCopy[status].label}</span></div>
-                  <small>{status === 'pass' ? 'Matched intent' : status === 'fail' ? 'Needs attention' : 'Safe to expect'}</small>
-                </button>
-              ))}
-              <button className={`summary-card total ${filter === 'all' ? 'selected' : ''}`} type="button" onClick={() => setFilter('all')}>
-                <span className="coverage-ring">100%</span>
-                <div><strong>{report.results.length}</strong><span>Total tests</span></div>
-                <small>{representativeCarts.length} carts covered</small>
-              </button>
-            </div>
-
-            <div className="results-table">
-              <div className="table-toolbar">
-                <div className="filter-tabs" role="tablist" aria-label="Filter results">
-                  {(['all', 'fail', 'warning', 'pass'] as ResultFilter[]).map((item) => (
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={filter === item}
-                      className={filter === item ? 'active' : ''}
-                      onClick={() => setFilter(item)}
-                      key={item}
-                    >
-                      {item === 'all' ? 'All results' : statusCopy[item].label}
-                      <span>{item === 'all' ? report.results.length : counts[item]}</span>
+            {hasResults ? (
+              <>
+                <div className="summary-grid">
+                  {(['pass', 'fail', 'warning'] as ValidationStatus[]).map((status) => (
+                    <button className={`summary-card ${status} ${filter === status ? 'selected' : ''}`} type="button" key={status} onClick={() => setFilter(status)}>
+                      <span className={`status-icon ${status}`}>{statusCopy[status].symbol}</span>
+                      <div><strong>{counts[status]}</strong><span>{statusCopy[status].label}</span></div>
+                      <small>{status === 'pass' ? 'Matched intent' : status === 'fail' ? 'Needs attention' : 'Safe to expect'}</small>
                     </button>
                   ))}
+                  <button className={`summary-card total ${filter === 'all' ? 'selected' : ''}`} type="button" onClick={() => setFilter('all')}>
+                    <span className="coverage-ring">{report.results.length}/{report.scenarios.length}</span>
+                    <div><strong>{report.results.length}</strong><span>Total tests</span></div>
+                    <small>{representativeCarts.length} carts covered</small>
+                  </button>
                 </div>
-                <span>Sorted by attention needed</span>
+
+                <div className="results-table">
+                  <div className="table-toolbar">
+                    <div className="filter-tabs" role="tablist" aria-label="Filter results">
+                      {(['all', 'fail', 'warning', 'pass'] as ResultFilter[]).map((item) => (
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={filter === item}
+                          className={filter === item ? 'active' : ''}
+                          onClick={() => setFilter(item)}
+                          key={item}
+                        >
+                          {item === 'all' ? 'All results' : statusCopy[item].label}
+                          <span>{item === 'all' ? report.results.length : counts[item]}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <span>Sorted by attention needed</span>
+                  </div>
+                  <div className="table-head"><span>Outcome & scenario</span><span>Expected</span><span>{report.runtime.executionMode === 'live' ? 'Actual' : 'Simulated'}</span><span>Total</span></div>
+                  <div className="result-list">
+                    {filteredResults.map((result) => (
+                      <ResultRow
+                        key={result.scenario.id}
+                        result={result}
+                        expanded={expandedId === result.scenario.id}
+                        onToggle={() => setExpandedId(expandedId === result.scenario.id ? '' : result.scenario.id)}
+                        executionMode={report.runtime.executionMode}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="results-empty">
+                <strong>No live carts have been created.</strong>
+                <p>Review the promotion brief, then use Run live preflight to execute the queued scenarios.</p>
               </div>
-              <div className="table-head"><span>Outcome & scenario</span><span>Expected</span><span>{report.runtime.executionMode === 'live' ? 'Actual' : 'Simulated'}</span><span>Total</span></div>
-              <div className="result-list">
-                {filteredResults.map((result) => (
-                  <ResultRow
-                    key={result.scenario.id}
-                    result={result}
-                    expanded={expandedId === result.scenario.id}
-                    onToggle={() => setExpandedId(expandedId === result.scenario.id ? '' : result.scenario.id)}
-                    executionMode={report.runtime.executionMode}
-                  />
-                ))}
-              </div>
-            </div>
+            )}
           </section>
 
           <footer className="app-footer">

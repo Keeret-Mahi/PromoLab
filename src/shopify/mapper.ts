@@ -12,6 +12,7 @@ import {
 import type {
   ShopifyDiscount,
   ShopifyDiscountCustomerGetsValue,
+  ShopifyDiscountEffect,
   ShopifyDiscountItems,
   ShopifyDiscountNodesResponse,
   ShopifyMinimumRequirement,
@@ -40,12 +41,12 @@ function categoryFor(discount: ShopifyDiscount): PromoLabDiscountCategory {
   return 'order';
 }
 
-function percentageFrom(value: ShopifyDiscountCustomerGetsValue): number | undefined {
+function percentageFrom(value: ShopifyDiscountEffect): number | undefined {
   if (value.__typename !== 'DiscountPercentage') return undefined;
   return value.percentage <= 1 ? value.percentage * 100 : value.percentage;
 }
 
-function basicValue(value: ShopifyDiscountCustomerGetsValue): PromoLabDiscountValue {
+function effectValue(value: ShopifyDiscountEffect): PromoLabDiscountValue {
   if (value.__typename === 'DiscountPercentage') {
     const percentage = percentageFrom(value) ?? 0;
     return { kind: 'percentage', percentage };
@@ -55,6 +56,10 @@ function basicValue(value: ShopifyDiscountCustomerGetsValue): PromoLabDiscountVa
     amount: Number(value.amount.amount),
     currencyCode: value.amount.currencyCode,
   };
+}
+
+function basicValue(value: ShopifyDiscountCustomerGetsValue): PromoLabDiscountValue {
+  return effectValue(value.__typename === 'DiscountOnQuantity' ? value.effect : value);
 }
 
 function itemEligibility(items: ShopifyDiscountItems): Pick<
@@ -133,18 +138,37 @@ function normalizeDiscount(id: string, discount: ShopifyDiscount): PromoLabDisco
   } else if (discount.__typename === 'DiscountCodeBxgy' || discount.__typename === 'DiscountAutomaticBxgy') {
     const customerBuysEligibility = itemEligibility(discount.customerBuys.items);
     const customerGetsEligibility = itemEligibility(discount.customerGets.items);
+    const customerBuysValue = discount.customerBuys.value;
+    const customerGetsValue = discount.customerGets.value;
+    const getQuantity = customerGetsValue.__typename === 'DiscountOnQuantity'
+      ? Number(customerGetsValue.quantity.quantity)
+      : 1;
+    const getEffect = customerGetsValue.__typename === 'DiscountOnQuantity'
+      ? customerGetsValue.effect
+      : customerGetsValue;
+    const buyQuantity = customerBuysValue.__typename === 'DiscountQuantity'
+      ? Number(customerBuysValue.quantity)
+      : undefined;
+    const buyAmount = customerBuysValue.__typename === 'DiscountPurchaseAmount'
+      ? Number(customerBuysValue.amount)
+      : undefined;
     value = {
       kind: 'buy-x-get-y',
-      buyQuantity: Number(discount.customerBuys.value.quantity),
-      getQuantity: Number(discount.customerGets.value.quantity.quantity),
-      getPercentage: percentageFrom(discount.customerGets.value.effect) ?? 100,
+      ...(buyQuantity === undefined ? {} : { buyQuantity }),
+      ...(buyAmount === undefined ? {} : { buyAmount }),
+      getQuantity,
+      ...(getEffect.__typename === 'DiscountPercentage'
+        ? { getPercentage: percentageFrom(getEffect) ?? 100 }
+        : {
+            getAmount: Number(getEffect.amount.amount),
+            currencyCode: getEffect.amount.currencyCode,
+          }),
     };
     eligibility = {
       ...eligibility,
       ...customerBuysEligibility,
-      minimumQuantity:
-        Number(discount.customerBuys.value.quantity)
-        + Number(discount.customerGets.value.quantity.quantity),
+      ...(buyQuantity === undefined ? {} : { minimumQuantity: buyQuantity + getQuantity }),
+      ...(buyAmount === undefined ? {} : { minimumSubtotal: buyAmount }),
       mayBeTruncated:
         customerBuysEligibility.mayBeTruncated
         || customerGetsEligibility.mayBeTruncated,
@@ -193,6 +217,7 @@ export function mapShopifyProducts(
         id: variant.id,
         title: variant.title,
         ...(variant.sku ? { sku: variant.sku } : {}),
+        price: Number(variant.price),
       })),
       variantsMayBeTruncated: product.variants.pageInfo.hasNextPage,
     };

@@ -1,8 +1,12 @@
 import { runServerPreflight } from '../../../src/server/preflight.ts';
 
 const MAX_INTENT_LENGTH = 5_000;
+type PreflightRunner = typeof runServerPreflight;
 
-export async function POST(request: Request): Promise<Response> {
+export async function handlePreflightPost(
+  request: Request,
+  runner: PreflightRunner = runServerPreflight,
+): Promise<Response> {
   try {
     const body = await request.json() as { intent?: unknown };
     const intent = typeof body.intent === 'string' ? body.intent.trim() : '';
@@ -17,7 +21,7 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
-    return Response.json(await runServerPreflight(intent));
+    return Response.json(await runner(intent));
   } catch {
     // Keep server configuration and upstream Shopify details out of browser responses.
     return Response.json(
@@ -25,4 +29,8 @@ export async function POST(request: Request): Promise<Response> {
       { status: 500 },
     );
   }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return handlePreflightPost(request);
 }

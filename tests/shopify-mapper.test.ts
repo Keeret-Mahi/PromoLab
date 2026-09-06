@@ -108,7 +108,7 @@ test('preserves collection eligibility and safely normalizes Shopify Functions d
   assert.equal(discounts.at(-1)?.eligibility.allProducts, false);
 });
 
-test('maps DiscountAutomaticBasic', () => {
+test('maps DiscountPercentage from DiscountCustomerGetsValue on an automatic discount', () => {
   const [discount] = mapShopifyDiscounts(responseWithDiscount({
     __typename: 'DiscountAutomaticBasic',
     title: 'Automatic 15%',
@@ -139,6 +139,40 @@ test('maps DiscountAutomaticBasic', () => {
   });
 });
 
+test('maps DiscountAmount from DiscountCustomerGetsValue on a code discount', () => {
+  const [discount] = mapShopifyDiscounts(responseWithDiscount({
+    __typename: 'DiscountCodeBasic',
+    title: 'Twenty dollars off',
+    summary: '$20 off the order',
+    status: 'ACTIVE',
+    startsAt: '2026-01-01T00:00:00Z',
+    endsAt: null,
+    discountClasses: ['ORDER'],
+    codes: { nodes: [{ code: 'TAKE20' }] },
+    combinesWith: {
+      orderDiscounts: false,
+      productDiscounts: true,
+      shippingDiscounts: true,
+    },
+    minimumRequirement: null,
+    customerGets: {
+      value: {
+        __typename: 'DiscountAmount',
+        amount: { amount: '20.00', currencyCode: 'CAD' },
+        appliesOnEachItem: false,
+      },
+      items: { __typename: 'AllDiscountItems', allItems: true },
+    },
+  }));
+
+  assert.equal(discount?.method, 'code');
+  assert.deepEqual(discount?.value, {
+    kind: 'fixed-amount',
+    amount: 20,
+    currencyCode: 'CAD',
+  });
+});
+
 test('maps DiscountCodeFreeShipping', () => {
   const [discount] = mapShopifyDiscounts(responseWithDiscount({
     __typename: 'DiscountCodeFreeShipping',
@@ -166,7 +200,7 @@ test('maps DiscountCodeFreeShipping', () => {
   assert.equal(discount?.eligibility.minimumSubtotal, 50);
 });
 
-test('maps DiscountCodeBxgy and flags nested eligibility truncation', () => {
+test('maps DiscountQuantity and DiscountOnQuantity for a code BXGY discount', () => {
   const [discount] = mapShopifyDiscounts(responseWithDiscount({
     __typename: 'DiscountCodeBxgy',
     title: 'Buy two get one',
@@ -182,7 +216,7 @@ test('maps DiscountCodeBxgy and flags nested eligibility truncation', () => {
       shippingDiscounts: true,
     },
     customerBuys: {
-      value: { quantity: '2' },
+      value: { __typename: 'DiscountQuantity', quantity: '2' },
       items: {
         __typename: 'DiscountProducts',
         products: {
@@ -197,6 +231,7 @@ test('maps DiscountCodeBxgy and flags nested eligibility truncation', () => {
     },
     customerGets: {
       value: {
+        __typename: 'DiscountOnQuantity',
         quantity: { quantity: '1' },
         effect: { __typename: 'DiscountPercentage', percentage: 1 },
       },
@@ -221,6 +256,50 @@ test('maps DiscountCodeBxgy and flags nested eligibility truncation', () => {
   assert.equal(discount?.eligibility.mayBeTruncated, true);
 });
 
+test('maps DiscountPurchaseAmount and a fixed DiscountOnQuantity effect', () => {
+  const [discount] = mapShopifyDiscounts(responseWithDiscount({
+    __typename: 'DiscountAutomaticBxgy',
+    title: 'Spend 100 get 20',
+    summary: 'Spend $100 and get $20 off one item',
+    status: 'ACTIVE',
+    startsAt: '2026-01-01T00:00:00Z',
+    endsAt: null,
+    discountClasses: ['PRODUCT'],
+    combinesWith: {
+      orderDiscounts: false,
+      productDiscounts: false,
+      shippingDiscounts: true,
+    },
+    customerBuys: {
+      value: { __typename: 'DiscountPurchaseAmount', amount: '100.00' },
+      items: { __typename: 'AllDiscountItems', allItems: true },
+    },
+    customerGets: {
+      value: {
+        __typename: 'DiscountOnQuantity',
+        quantity: { quantity: '1' },
+        effect: {
+          __typename: 'DiscountAmount',
+          amount: { amount: '20.00', currencyCode: 'CAD' },
+          appliesOnEachItem: true,
+        },
+      },
+      items: { __typename: 'AllDiscountItems', allItems: true },
+    },
+  }));
+
+  assert.equal(discount?.method, 'automatic');
+  assert.deepEqual(discount?.value, {
+    kind: 'buy-x-get-y',
+    buyAmount: 100,
+    getQuantity: 1,
+    getAmount: 20,
+    currencyCode: 'CAD',
+  });
+  assert.equal(discount?.eligibility.minimumSubtotal, 100);
+  assert.equal(discount?.eligibility.minimumQuantity, undefined);
+});
+
 test('normalizes products and exposes variant truncation', () => {
   const response = structuredClone(MOCK_SHOPIFY_PRODUCTS_RESPONSE);
   const product = response.products.nodes[0];
@@ -243,10 +322,12 @@ test('normalizes products and exposes variant truncation', () => {
         id: 'gid://shopify/ProductVariant/mock-classic-tee',
         title: 'Default',
         sku: 'TEE-CLASSIC',
+        price: 30,
       },
       {
         id: 'gid://shopify/ProductVariant/no-sku',
         title: 'No SKU',
+        price: 30,
       },
     ],
     variantsMayBeTruncated: true,

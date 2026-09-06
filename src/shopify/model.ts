@@ -14,7 +14,15 @@ export type PromoLabDiscountValue =
   | { kind: 'percentage'; percentage: number }
   | { kind: 'fixed-amount'; amount: number; currencyCode: string }
   | { kind: 'free-shipping' }
-  | { kind: 'buy-x-get-y'; buyQuantity: number; getQuantity: number; getPercentage: number }
+  | {
+      kind: 'buy-x-get-y';
+      buyQuantity?: number;
+      buyAmount?: number;
+      getQuantity: number;
+      getPercentage?: number;
+      getAmount?: number;
+      currencyCode?: string;
+    }
   | { kind: 'unknown' };
 
 export interface PromoLabDiscountEligibility {
@@ -32,6 +40,7 @@ export interface PromoLabProductVariant {
   id: string;
   title: string;
   sku?: string;
+  price: number;
 }
 
 /** The small product shape PromoLab needs for promotion eligibility tests. */
@@ -118,6 +127,9 @@ export function assertPromoLabProduct(value: unknown): asserts value is PromoLab
   for (const variant of product.variants) {
     if (!variant.id || !variant.title) {
       throw new TypeError('A normalized product variant requires id and title.');
+    }
+    if (!Number.isFinite(variant.price) || variant.price < 0) {
+      throw new TypeError('A normalized product variant requires a non-negative price.');
     }
   }
 }

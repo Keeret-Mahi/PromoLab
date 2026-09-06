@@ -126,6 +126,17 @@ export function executeMockScenario(
 
   return {
     scenarioId: scenario.id,
+    status: 'completed',
+    attemptedDiscountCodes: [...scenario.discountCodes],
+    discountCodes: scenario.discountCodes.map((code) => ({
+      code,
+      applicable: appliedDiscounts.includes(code),
+    })),
+    discountAllocations: [],
+    lines: [],
+    userErrors: [],
+    warnings: [],
+    currencyCode: 'CAD',
     subtotal,
     productDiscount,
     orderDiscount,

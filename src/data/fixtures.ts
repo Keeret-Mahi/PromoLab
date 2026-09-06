@@ -1,7 +1,7 @@
 import type { CartFixture, ExpectedPromotion } from '../domain/types.ts';
 
 export const DEFAULT_PROMPT =
-  'Summer Sale should give customers 20% off, but it must not stack with WELCOME10. Free shipping should still apply on orders over $75. Buy 2 Get 1 should work independently.';
+  'SUMMER20 should give 20% off eligible products. It must not stack with WELCOME10; when both are attempted on the same eligible cart, only the better applicable discount should remain.';
 
 export const SAMPLE_CARTS: CartFixture[] = [
   {
@@ -42,7 +42,7 @@ export const SAMPLE_CARTS: CartFixture[] = [
 
 export const DEFAULT_EXPECTATIONS: ExpectedPromotion = {
   name: 'Summer Sale preflight',
-  summary: '20% summer pricing with explicit stacking, shipping, and BOGO rules.',
+  summary: '20% off eligible products with explicit SUMMER20 and WELCOME10 incompatibility.',
   parser: 'mock-llm',
   confidence: 0.96,
   rules: [
@@ -50,36 +50,19 @@ export const DEFAULT_EXPECTATIONS: ExpectedPromotion = {
       id: 'summer-value',
       kind: 'discount-value',
       title: 'Summer discount',
-      statement: 'SUMMER20 applies 20% off the merchandise subtotal.',
-      sourceText: 'Summer Sale should give customers 20% off',
+      statement: 'SUMMER20 applies 20% off eligible products.',
+      sourceText: 'SUMMER20 should give 20% off eligible products',
       discountCodes: ['SUMMER20'],
       value: 20,
     },
     {
       id: 'order-exclusion',
       kind: 'incompatibility',
-      title: 'Order codes do not stack',
-      statement: 'WELCOME10 and SUMMER20 are mutually exclusive; keep the larger saving.',
-      sourceText: 'it must not stack with WELCOME10',
-      discountCodes: ['WELCOME10', 'SUMMER20'],
+      title: 'Discount incompatibility',
+      statement: 'SUMMER20 and WELCOME10 should not stack; only the better applicable discount should remain.',
+      sourceText: 'It must not stack with WELCOME10; when both are attempted on the same eligible cart, only the better applicable discount should remain',
+      discountCodes: ['SUMMER20', 'WELCOME10'],
       resolution: 'best-discount',
-    },
-    {
-      id: 'shipping-threshold',
-      kind: 'threshold',
-      title: 'Shipping remains eligible',
-      statement: 'FREESHIP applies when the pre-discount merchandise subtotal is at least $75.',
-      sourceText: 'Free shipping should still apply on orders over $75',
-      discountCodes: ['FREESHIP'],
-      threshold: 75,
-    },
-    {
-      id: 'bogo-independence',
-      kind: 'independence',
-      title: 'BOGO is independent',
-      statement: 'BUY2GET1 may combine with order and shipping discounts when the cart is eligible.',
-      sourceText: 'Buy 2 Get 1 should work independently',
-      discountCodes: ['BUY2GET1'],
     },
   ],
 };

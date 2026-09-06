@@ -54,9 +54,21 @@ export type ShopifyDiscountItems =
       collections: ShopifyNestedConnection<{ id: string }>;
     };
 
-export type ShopifyDiscountCustomerGetsValue =
+export type ShopifyDiscountEffect =
   | { __typename: 'DiscountPercentage'; percentage: number }
   | { __typename: 'DiscountAmount'; amount: ShopifyMoneyV2; appliesOnEachItem: boolean };
+
+export type ShopifyDiscountCustomerGetsValue =
+  | ShopifyDiscountEffect
+  | {
+      __typename: 'DiscountOnQuantity';
+      quantity: { quantity: string };
+      effect: ShopifyDiscountEffect;
+    };
+
+export type ShopifyDiscountCustomerBuysValue =
+  | { __typename: 'DiscountQuantity'; quantity: string }
+  | { __typename: 'DiscountPurchaseAmount'; amount: string };
 
 export interface ShopifyDiscountBase {
   __typename: string;
@@ -102,15 +114,12 @@ export interface ShopifyDiscountAutomaticFreeShipping extends ShopifyDiscountBas
 }
 
 export interface ShopifyBxgyCustomerGets {
-  value: {
-    quantity: { quantity: string };
-    effect: ShopifyDiscountCustomerGetsValue;
-  };
+  value: ShopifyDiscountCustomerGetsValue;
   items: ShopifyDiscountItems;
 }
 
 export interface ShopifyBxgyCustomerBuys {
-  value: { quantity: string };
+  value: ShopifyDiscountCustomerBuysValue;
   items: ShopifyDiscountItems;
 }
 

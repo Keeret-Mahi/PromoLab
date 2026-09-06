@@ -59,7 +59,7 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
     }
   }
 
-  fragment DiscountValueFields on DiscountCustomerGetsValue {
+  fragment DiscountEffectFields on DiscountEffect {
     __typename
     ... on DiscountPercentage { percentage }
     ... on DiscountAmount {
@@ -68,13 +68,32 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
     }
   }
 
+  fragment DiscountCustomerGetsValueFields on DiscountCustomerGetsValue {
+    __typename
+    ... on DiscountPercentage { percentage }
+    ... on DiscountAmount {
+      amount { amount currencyCode }
+      appliesOnEachItem
+    }
+    ... on DiscountOnQuantity {
+      quantity { quantity }
+      effect { ...DiscountEffectFields }
+    }
+  }
+
+  fragment DiscountCustomerBuysValueFields on DiscountCustomerBuysValue {
+    __typename
+    ... on DiscountQuantity { quantity }
+    ... on DiscountPurchaseAmount { amount }
+  }
+
   fragment DiscountCodeBasicFields on DiscountCodeBasic {
     title summary status startsAt endsAt discountClasses
     codes(first: 1) { nodes { code } }
     combinesWith { ...DiscountCombinationFields }
     minimumRequirement { ...DiscountMinimumFields }
     customerGets {
-      value { ...DiscountValueFields }
+      value { ...DiscountCustomerGetsValueFields }
       items { ...DiscountItemFields }
     }
   }
@@ -84,7 +103,7 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
     combinesWith { ...DiscountCombinationFields }
     minimumRequirement { ...DiscountMinimumFields }
     customerGets {
-      value { ...DiscountValueFields }
+      value { ...DiscountCustomerGetsValueFields }
       items { ...DiscountItemFields }
     }
   }
@@ -107,14 +126,11 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
     codes(first: 1) { nodes { code } }
     combinesWith { ...DiscountCombinationFields }
     customerBuys {
-      value { quantity }
+      value { ...DiscountCustomerBuysValueFields }
       items { ...DiscountItemFields }
     }
     customerGets {
-      value {
-        quantity { quantity }
-        effect { ...DiscountValueFields }
-      }
+      value { ...DiscountCustomerGetsValueFields }
       items { ...DiscountItemFields }
     }
   }
@@ -123,14 +139,11 @@ export const DISCOUNT_NODES_QUERY = /* GraphQL */ `
     title summary status startsAt endsAt discountClasses
     combinesWith { ...DiscountCombinationFields }
     customerBuys {
-      value { quantity }
+      value { ...DiscountCustomerBuysValueFields }
       items { ...DiscountItemFields }
     }
     customerGets {
-      value {
-        quantity { quantity }
-        effect { ...DiscountValueFields }
-      }
+      value { ...DiscountCustomerGetsValueFields }
       items { ...DiscountItemFields }
     }
   }
